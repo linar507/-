@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Клинический симулятор: беременная 32 лет</title>
+<style>
+  :root{ --bg:#0b1220; --panel:#111c2e; --line:#1e2f4a; --txt:#dfe8f5; --dim:#8aa0bf;
+         --ok:#39d98a; --bad:#ff5d6c; --warn:#ffd23f; --accent:#5aa9ff; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:linear-gradient(160deg,#0b1220 0%,#0e1830 60%,#101c36 100%); color:var(--txt);
+       font-family:'Segoe UI',system-ui,sans-serif; min-height:100vh; padding:14px;}
+  h1{font-size:20px; text-align:center; color:#fff; margin-bottom:4px;}
+  .sub{ text-align:center; color:var(--dim); font-size:13px; margin-bottom:12px;}
+  .topbar{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;
+          background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 12px; margin-bottom:12px;}
+  .pill{background:#0d1726; border:1px solid var(--line); border-radius:10px; padding:6px 12px; font-size:13px; min-width:96px; text-align:center;}
+  .pill b{display:block; font-size:15px; color:#fff;}
+  .pill .lbl{color:var(--dim); font-size:10px; text-transform:uppercase; letter-spacing:.5px;}
+  #bp{color:#ff9a6b;} #temp{color:#ffcc4d;} #fhr{color:#39ff9d;} #mp{color:#ff8fa3;} #time{color:#8fd0ff;}
+  .sbtn{cursor:pointer; user-select:none; border:1px solid var(--line); background:#0d1726; color:var(--txt);
+        border-radius:10px; padding:7px 12px; font-size:13px; transition:.15s;}
+  .sbtn:hover{border-color:var(--accent);}
+  .sbtn.off{opacity:.45; text-decoration:line-through;}
+  #restart{background:#233a5e; border-color:#3a5b8f; font-weight:600;}
+  .wrap{display:flex; gap:14px; flex-wrap:wrap; justify-content:center;}
+  .scene{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; width:300px; text-align:center;}
+  .monitor{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; width:320px;}
+  .mttl{font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;}
+  canvas#ecg{width:100%; height:96px; background:#02121f; border-radius:10px; border:1px solid #0b3550;}
+  .bignum{font-size:34px; font-weight:700; color:#39ff9d; text-shadow:0 0 12px #39ff9d55; margin-top:6px;}
+  .mlabel{font-size:11px; color:var(--dim);}
+  .fig{position:relative; height:230px; display:flex; align-items:flex-end; justify-content:center;}
+  .woman{position:relative;}
+  .head{width:44px;height:44px;border-radius:50%;background:#f0c8a0;margin:0 auto;}
+  .hair{width:48px;height:20px;border-radius:22px 22px 4px 4px;background:#5a3a22;position:relative;top:-6px;left:47%;}
+  .body{width:92px;height:96px;border-radius:30px 30px 18px 18px;background:#e8737f;position:relative;top:-8px;}
+  .belly{position:absolute; width:74px;height:74px;border-radius:50%;background:#f2a3ac; right:-26px; bottom:-24px;
+         animation:breathe 3.2s ease-in-out infinite; box-shadow:inset -6px -8px 14px #d97a86;}
+  @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  .legs{width:80px;height:70px;border-radius:0 0 26px 26px;background:#3f5d9e;margin:-6px auto 0;}
+  .sweat{position:absolute; font-size:20px; top:-8px; right:6px; opacity:0; transition:.4s; animation:drip 1.6s infinite;}
+  .sweat.show{opacity:1;}
+  @keyframes drip{0%{transform:translateY(0)}100%{transform:translateY(26px);opacity:0}}
+  .speech{margin-top:8px; background:#16233c; border:1px solid var(--line); border-radius:12px; padding:8px 10px;
+          font-size:13px; min-height:44px; color:#cfe0ff; font-style:italic;}
+  .trembling{animation:trem .12s infinite;}
+  @keyframes trem{0%{transform:translate(0)}50%{transform:translate(1.5px,-1px)}100%{transform:translate(-1.5px,1px)}}
+  .main{flex:1; min-width:320px; max-width:640px;}
+  .stagecard{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:12px;}
+  .stagetitle{font-size:17px; font-weight:700; color:#fff; margin-bottom:4px;}
+  .stageintro{font-size:13.5px; color:#bcd0ee; line-height:1.5; margin-bottom:10px;}
+  .progress{display:flex; gap:6px; margin-bottom:10px;}
+  .dot{width:26px;height:6px;border-radius:3px;background:#20344f;}
+  .dot.done{background:var(--ok);} .dot.cur{background:var(--accent); box-shadow:0 0 8px #5aa9ff88;}
+  .opt{display:block; width:100%; text-align:left; background:#0d1726; border:1px solid var(--line); color:var(--txt);
+       border-radius:12px; padding:11px 14px; margin-bottom:8px; font-size:14px; cursor:pointer; transition:.15s; line-height:1.4;}
+  .opt:hover:not(:disabled){border-color:var(--accent); background:#122340;}
+  .opt:disabled{cursor:default; opacity:.55;}
+  .opt.good{border-color:var(--ok); background:#0e2b1e; color:#b8ffd9; opacity:1;}
+  .opt.badflash{border-color:var(--bad); background:#33111a; color:#ffc9cf; animation:shake .35s;}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  #log{background:#0a1322; border:1px solid var(--line); border-radius:12px; padding:10px; font-size:13px;
+       max-height:150px; overflow-y:auto; line-height:1.5;}
+  #log .ok{color:#8affc4;} #log .er{color:#ff9aa4;} #log .in{color:#9db8dd;}
+  .overlay{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50;}
+  .overlay.show{display:flex;}
+  #dead{background:rgba(2,4,10,.93);}
+  #win{background:rgba(3,10,22,.9);}
+  .deadc{ text-align:center; z-index:2; position:relative; max-width:640px; padding:20px;}
+  .grave{position:relative; width:180px; height:130px; margin:0 auto 10px;}
+  .mound{position:absolute; bottom:0; left:0; width:180px; height:80px; border-radius:90px 90px 0 0; background:#2b3a2a;}
+  .cross{position:absolute; bottom:64px; left:80px; width:16px; height:90px; background:#7a5a34; border-radius:3px;}
+  .cross:before{content:''; position:absolute; top:14px; left:-24px; width:64px; height:16px; background:#7a5a34; border-radius:3px;}
+  .candle{position:absolute; bottom:2px; left:26px; width:12px; height:34px; background:#e8dcae; border-radius:3px 3px 0 0;}
+  .flame{position:absolute; bottom:36px; left:29px; width:6px; height:14px; border-radius:50% 50% 40% 40%;
+         background:radial-gradient(#ffe28a,#ff9d3b); animation:flick .18s infinite alternate; box-shadow:0 0 14px #ffae4455;}
+  @keyframes flick{from{transform:scale(1)}to{transform:scale(.8,1.15)}}
+  .deadtitle{font-size:26px; color:#ff8290; font-weight:800; margin-bottom:6px;}
+  .deadsub{color:#c9a0a8; font-size:14px; margin-bottom:12px;}
+  .analysis{background:#0d1626; border:1px solid #2a3a58; border-radius:14px; padding:14px; text-align:left;
+            font-size:13px; line-height:1.6; color:#cfe0f5; max-height:40vh; overflow-y:auto; margin-bottom:12px;}
+  .analysis b{color:#ffd76e;}
+  .analysis h3{color:#7fb8ff; margin:8px 0 4px; font-size:14px;}
+  .btn2{cursor:pointer; border:none; border-radius:10px; padding:10px 22px; font-size:14px; font-weight:700; background:#2c4a78; color:#fff;}
+  #fire{position:absolute; inset:0; pointer-events:none;}
+  .wintitle{font-size:28px; color:#ffe37a; font-weight:800; margin-bottom:6px; text-shadow:0 0 18px #ffb83066;}
+  .winsub{color:#ffe9c2; font-size:14px; margin-bottom:12px;}
+  .rain{position:absolute; inset:0; overflow:hidden; pointer-events:none;}
+  .drop{position:absolute; top:-20px; width:2px; height:14px; background:linear-gradient(#9ec9ff00,#9ec9ffaa);
+        animation:fall linear infinite;}
+  @keyframes fall{to{transform:translateY(110vh);}}
+  .timebar{height:8px; background:#16233c; border-radius:4px; overflow:hidden; margin-bottom:12px;}
+  .timebar div{height:100%; background:linear-gradient(90deg,#39d98a,#8fd0ff); transition:width 1s linear;}
+</style>
+</head>
+<body>
+<h1>👩‍⚕️ Клинический симулятор: «Беременная 32 лет»</h1>
+<div class="sub">Преэклампсия + обострение пиелонефрита + ПОНРП · 4 этапа · 2 ошибки или обнуление таймера = гибель</div>
+
+<div class="topbar">
+  <div class="pill"><span class="lbl">Время</span><b id="time">45:00</b></div>
+  <div class="pill"><span class="lbl">АД матери</span><b id="bp">185/110</b></div>
+  <div class="pill"><span class="lbl">Темп.</span><b id="temp">38,0</b></div>
+  <div class="pill"><span class="lbl">Пульс</span><b id="mp">96</b></div>
+  <div class="pill"><span class="lbl">ЧСС плода</span><b id="fhr">100</b></div>
+  <div class="sbtn" id="sndBtn">🔊 Звук</div>
+  <div class="sbtn" id="fetBtn">👶 Плод</div>
+  <div class="sbtn" id="momBtn">👩 Мать</div>
+  <div class="sbtn" id="restart">⟲ Начать смену заново</div>
+</div>
+
+<div class="timebar"><div id="tfill" style="width:100%"></div></div>
+
+<div class="wrap">
+  <div class="scene">
+    <div class="mttl">Пациентка</div>
+    <div class="fig">
+      <div class="woman" id="woman">
+        <div class="hair"></div>
+        <div class="head"></div>
+        <div class="body"><div class="belly"></div></div>
+        <div class="legs"></div>
+        <div class="sweat" id="sweat">💦</div>
+      </div>
+    </div>
+    <div class="speech" id="speech">«Голова просто раскалывается… и мушки перед глазами…»</div>
+  </div>
+
+  <div class="monitor">
+    <div class="mttl">Монитор плода (КТГ)</div>
+    <canvas id="ecg" width="300" height="96"></canvas>
+    <div class="bignum" id="fhrBig">100</div>
+    <div class="mlabel">уд/мин · сердцебиение плода</div>
+  </div>
+
+  <div class="main">
+    <div class="stagecard">
+      <div class="progress" id="prog"></div>
+      <div class="stagetitle" id="stTitle"></div>
+      <div class="stageintro" id="stIntro"></div>
+      <div id="opts"></div>
+    </div>
+    <div id="log"><div class="in">Смена началась. Слушайте пациентку и выбирайте действия — но помните: цена ошибки здесь самая высокая.</div></div>
+  </div>
+</div>
+
+<div class="overlay" id="dead">
+  <div class="rain" id="rain"></div>
+  <div class="deadc">
+    <div class="grave">
+      <div class="cross"></div>
+      <div class="mound"></div>
+      <div class="candle"></div>
+      <div class="flame"></div>
+    </div>
+    <div class="deadtitle" id="deadTitle">Пациентка погибла…</div>
+    <div class="deadsub" id="deadSub"></div>
+    <div class="analysis" id="deadAn"></div>
+    <button class="btn2" onclick="restartGame()">⟲ Начать смену заново</button>
+  </div>
+</div>
+
+<div class="overlay" id="win">
+  <canvas id="fire"></canvas>
+  <div class="deadc">
+    <div class="wintitle">🎉 Мать и ребёнок живы!</div>
+    <div class="winsub">Все этапы пройдены верно. Операция успешна, состояние стабильное. Салют за вашего фельдшера!</div>
+    <div class="analysis" id="winAn"></div>
+    <button class="btn2" onclick="restartGame()">⟲ Пройти смену ещё раз</button>
+  </div>
+</div>
+
+<script>
+/* ================== ДАННЫЕ ЭТАПОВ ================== */
+const stages = [
+ { title:'Этап 1 · Фельдшер на дому',
+   intro:'Женщина 32 лет, беременность ~30 недель (дно матки на середине между пупком и мечевидным отростком). АД 185/110, t 38°C, головная боль, мушки перед глазами, рези при мочеиспускании, анамнез — хронический пиелонефрит. Найдите все 5 верных действий.',
+   opts:[
+    {t:'Оценить состояние: сознание, зрачки, пульс, повторная тонометрия на обеих руках, осмотр отёков', ok:1, e:'Первичный осмотр — основа любой тактики: оцениваем тяжесть преэклампсии и признаки угрожающей эклампсии.'},
+    {t:'Уложить на левый бок, покой, физический и голосовой контакт, подготовить венозный доступ', ok:1, e:'Положение на левом боку уменьшает компрессию нижней полой вены и снижает АД; венозный доступ готовят для экстренного введения препаратов.'},
+    {t:'Магния сульфат 25% — 10–20 мл в/в медленно (болюс), далее инфузия под контролем диуреза и рефлексов', ok:1, e:'Магнезия — препарат выбора для профилактики и купирования судорог при тяжёлой преэклампсии. Контроль: коленный рефлекс, диурез, ЧДД.'},
+    {t:'Экстренная госпитализация в родильный дом (перинатальный центр) на носилках, с сопровождением', ok:1, e:'Тяжёлая преэклампсия — абсолютное показание к госпитализации в стационар высокого уровня. Транспортировка только на носилках.'},
+    {t:'Передать в роддом информацию: срок, АД, температура, пиелонефрит в анамнезе, состояние плода', ok:1, e:'Предварительное сообщение позволяет приёмному отделению заранее подготовить ОРИТ, оперблок и неонатологов.'},
+    {t:'Ввести фуросемид 40 мг в/в «снять отёки и снизить давление»', ok:0, e:'ФАТАЛЬНАЯ ОШИБКА: при преэклампсии диуретики противопоказаны — гиповолемия усугубляет спазм сосудов, ишемию плаценты и мозга, ускоряет эклампсию.'},
+    {t:'Отложить госпитализацию: дать парацетамол от головной боли и вызвать терапевта на завтра', ok:0, e:'ФАТАЛЬНАЯ ОШИБКА: головная боль + мушки = угрожающая эклампсия. Потеря времени означает судороги, отслойку плаценты и гибель плода.'}
+   ]},
+ { title:'Этап 2 · В машине скорой помощи',
+   intro:'По пути в роддом. Женщина беспокойна, АД держится высоким, тембр голоса меняется. Действуйте как экипаж СМП.',
+   opts:[
+    {t:'Кислород 6–8 л/мин через маску, продолжить наблюдение за дыханием и сознанием', ok:1, e:'Оксигенотерапия улучшает маточно-плацентарный кровоток и снижает гипоксию плода.'},
+    {t:'Контроль АД каждые 10 минут; при сохранении АД ≥180/110 — нифедипин 10 мг под язык', ok:1, e:'Нифедипин — препарат выбора для управляемого снижения АД при преэклампсии (кроме магнезии). Резкое снижение недопустимо.'},
+    {t:'Положение на левом боку, осторожная транспортировка, аускультация сердцебиения плода в пути', ok:1, e:'Бережная транспортировка и контроль плода обязательны: на фоне гипертензии высок риск отслойки плаценты.'},
+    {t:'Продолжить инфузию магния сульфата, следить за рефлексами и частотой дыхания', ok:1, e:'Магнезиальная терапия должна быть непрерывной до родоразрешения и 24 часа после — иначе риск эклампсического приступа.'},
+    {t:'По рации предупредить приёмное отделение роддома о пациентке с преэклампсией 30 недель', ok:1, e:'Заблаговременное оповещение экономит драгоценные минуты: бригада и оперблок будут готовы к приёму.'},
+    {t:'Ввести окситоцин 5 ЕД в/в «ускорить роды и снизить давление»', ok:0, e:'ФАТАЛЬНАЯ ОШИБКА: окситоцин вне роддома при преэклампсии резко повышает риск отслойки плаценты и эклампсического приступа.'},
+    {t:'Дать анальгин с димедролом от головной боли и вести пациентку без наблюдения', ok:0, e:'ФАТАЛЬНАЯ ОШИБКА: симптоматическое лечение маскирует нарастание преэклампсии — судороги могут начаться прямо в машине.'}
+   ]},
+ { title:'Этап 3 · Приёмное отделение роддома',
+   intro:'В приёмном отделении: резкая боль в животе, кровянистые выделения из половых путей, матка напряжена, сердцебиение плода 100 уд/мин. Матка в тонусе. Действуйте как приёмное отделение.',
+   opts:[
+    {t:'Немедленная КТГ и наружное акушерское исследование: тонус матки, локальная болезненность', ok:1, e:'Клиника ПОНРП: боль, кровянистые выделения, гипертонус, дистресс плода. КТГ подтверждает страдание плода.'},
+    {t:'Срочно вызвать анестезиолога-реаниматолога, акушерскую бригаду, оповестить оперблок', ok:1, e:'При ПОНРП с дистрессом плода счёт идёт на минуты — нужна готовая операционная бригада.'},
+    {t:'Катетеризация 2 периферических вен; кровь на группу, резус, коагулограмму; готовность эритромассы и СЗП', ok:1, e:'Отслойка плаценты грозит массивным кровотечением и ДВС-синдромом — готовим кровь и свежезамороженную плазму заранее.'},
+    {t:'Экстренное кесарево сечение — абсолютные показания: ПОНРП + острый дистресс плода', ok:1, e:'При живом плоде и ПОНРП единственный шанс спасти мать и ребёнка — экстренное родоразрешение операцией.'},
+    {t:'Продолжить магнезию, кислород, положение на левом боку, катетер Фолея для учёта диуреза', ok:1, e:'Профилактика эклампсии и контроль диуреза (риск ОПН при отслойке) продолжаются непрерывно.'},
+    {t:'Начать стимуляцию родовой деятельности окситоцином «родит сама и быстрее»', ok:0, e:'ФАТАЛЬНАЯ ОШИБКА: стимуляция на фоне отслойки усиливает кровотечение и гипоксию плода вплоть до антенатальной гибели.'},
+    {t:'Выбрать выжидательную тактику: наблюдение и «посмотрим, как пойдёт»', ok:0, e:'ФАТАЛЬНАЯ ОШИБКА: при нарастающей отслойке выжидание = тотальная отслойка, ДВС-синдром, гибель плода и матери.'}
+   ]},
+ { title:'Этап 4 · После операции · ОРИТ',
+   intro:'Кесарево сечение выполнено. Ребёнок извлечён живым. Теперь — лечение матери: гипертензия, профилактика эклампсии, острый пиелонефрит. Завершите ведение.',
+   opts:[
+    {t:'Продолжить магнезиальную терапию ещё 24 часа после родоразрешения', ok:1, e:'Судорожная готовность сохраняется и после родов — магнезию продолжают минимум 24 часа.'},
+    {t:'Антибактериальная терапия: цефалоспорины III поколения (цефтриаксон) — лечение острого пиелонефрита', ok:1, e:'Цефалоспорины III поколения — препараты выбора при пиелонефрите беременных и родильниц: эффективны и безопасны для ребёнка.'},
+    {t:'Мониторинг: АД каждые 15–30 минут, диурез почасово по катетеру Фолея, коагулограмма в динамике', ok:1, e:'Контроль АД, диуреза и гемостаза обязателен: опасности — эклампсия, ОПН, ДВС-синдром после отслойки.'},
+    {t:'Инфузионная терапия кристаллоидами под контролем диуреза и центрального венозного давления', ok:1, e:'Восполнение ОЦК после кровопотери и на фоне вазоспазма — основа стабилизации гемодинамики.'},
+    {t:'Оценка новорождённого: баллы по Апгар, осмотр неонатолога, перевод в отделение новорождённых', ok:1, e:'Ребёнок родился на ~30 неделях в состоянии гипоксии — неонатальная команда нужна сразу.'},
+    {t:'Отменить магнезию сразу после родоразрешения «ребёнок родился, зачем дальше»', ok:0, e:'ФАТАЛЬНАЯ ОШИБКА: послеродовая эклампсия развивается именно в первые 24–48 часов. Отмена магнезии = судорожный приступ.'},
+    {t:'Назначить тетрациклин для «надёжного» лечения пиелонефрита', ok:0, e:'ФАТАЛЬНАЯ ОШИБКА: тетрациклины токсичны для плода и кормящей матери — нарушают формирование костей и зубов.'}
+   ]}
+];
+
+const DIAGNOSIS = `<h3>Полный диагноз</h3>
+Беременность 30 недель. <b>Преэклампсия тяжёлой степени</b> (АД 185/110, головная боль, мушки перед глазами — симптомы угрожающей эклампсии). <b>Обострение хронического пиелонефрита</b> — острый пиелонефрит беременных (t 38°C, дизурия после переохлаждения, мягкое тестоватое образование при третьем приёме Леопольда — увеличенная правая почка). <b>Преждевременная отслойка нормально расположенной плаценты (ПОНРП)</b> с острым дистрессом плода (ЧСС 100 → брадикардия).
+<h3>Тактика фельдшера</h3>
+Осмотр и тонометрия → положение на левом боку, покой, венозный доступ → магния сульфат 25% 10–20 мл в/в медленно → кислород → экстренная транспортировка на носилках в родильный дом с предварительным оповещением. Запрещены: фуросемид, стимуляция родов, выжидание.
+<h3>Тактика приёмного отделения</h3>
+КТГ и наружное исследование → вызов анестезиолога и бригады, готовность оперблока → 2 вены, кровь на группу/резус/коагулограмму, эритромасса и СЗП → <b>экстренное кесарево сечение</b> (ПОНРП + дистресс плода) → продолжение магнезии, кислород, катетер Фолея.
+<h3>Отделение госпитализации</h3>
+Отделение анестезиологии-реанимации и интенсивной терапии перинатального центра (ОРИТ), далее — обсервационное акушерское отделение (экстрагенитальная патология — пиелонефрит).
+<h3>Лечение в ОРИТ</h3>
+Магнезия 24 ч после родов · цефалоспорины III поколения при остром пиелонефрите · контроль АД, диуреза, коагулограммы · инфузия кристаллоидами · неонатальная оценка ребёнка (Апгар).`;
+
+/* ================== СОСТОЯНИЕ ================== */
+let stageIdx=0, errors=0, chosen=new Set(), timeLeft=45*60, timerH=null, over=false;
+let fetalHR=100, momHR=96;
+const bpArr=['185/110','200/120','210/130'], tArr=['38,0','38,8','39,2'], fArr=[100,85,70], mArr=[96,108,118];
+const speechArr=[
+ ['«Голова просто раскалывается… и мушки перед глазами…»','«Голова болит всё сильнее… что-то мелькает в глазах…»','«В глазах потемнело… я не вижу…»'],
+ ['«Кажется, я чувствую движения ребёнка… наверное…»','«Мне нехорошо… я чего-то боюсь…»','«Всё плывёт… сердцебиение… я слышу его…»'],
+ ['«Ай! Живот! Больно!.. Кровь?!»','«Матка как камень… мне очень плохо…»','«Спасите… я не чувствую ребёнка…»'],
+ ['«Ребёнок родился?.. Я его услышала… слава Богу…»','«Голова всё ещё тяжёлая… но я жива…»','«Спасибо вам… мы вместе справились…»']
+];
+
+/* ================== ЗВУК ================== */
+let AC=null, master=null, soundOn=true, fetalOn=true, motherOn=true;
+let fetalT=null, motherT=null;
+function ac(){
+  if(!AC){ AC=new (window.AudioContext||window.webkitAudioContext)();
+    master=AC.createGain(); master.gain.value=0.5; master.connect(AC.destination); }
+  if(AC.state==='suspended') AC.resume();
+  return AC;
+}
+function thump(freq,t0,vol,dur){
+  const c=AC, o=c.createOscillator(), g=c.createGain();
+  o.type='sine'; o.frequency.value=freq;
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.linearRampToValueAtTime(vol,t0+0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(g); g.connect(master); o.start(t0); o.stop(t0+dur+0.05);
+}
+function fetalBeat(){
+  if(!soundOn||!fetalOn||!AC) return;
+  const t=AC.currentTime, p=60/fetalHR;
+  thump(185,t,0.3,0.16); thump(140,t+p*0.18,0.2,0.14);
+}
+function motherBeat(){
+  if(!soundOn||!motherOn||!AC) return;
+  const t=AC.currentTime;
+  thump(58,t,0.22,0.22); thump(44,t+0.16,0.16,0.26);
+}
+function startFetal(){ stopFetal(); fetalT=setInterval(fetalBeat, Math.round(60000/fetalHR)); }
+function stopFetal(){ if(fetalT){clearInterval(fetalT); fetalT=null;} }
+function startMother(){ stopMother(); motherT=setInterval(motherBeat, Math.round(60000/momHR)); }
+function stopMother(){ if(motherT){clearInterval(motherT); motherT=null;} }
+function syncSounds(){ startFetal(); startMother(); }
+
+const sndBtn=document.getElementById('sndBtn'),
+      fetBtn=document.getElementById('fetBtn'),
+      momBtn=document.getElementById('momBtn');
+sndBtn.onclick=()=>{ soundOn=!soundOn;
+  if(!soundOn){ stopFetal(); stopMother(); if(AC) AC.suspend(); }
+  else { ac(); if(fetalOn) startFetal(); if(motherOn) startMother(); }
+  sndBtn.textContent=soundOn?'🔊 Звук':'🔇 Звук';
+  sndBtn.classList.toggle('off',!soundOn);};
+fetBtn.onclick=()=>{ fetalOn=!fetalOn;
+  if(fetalOn){ ac(); startFetal(); } else stopFetal();
+  fetBtn.classList.toggle('off',!fetalOn);};
+momBtn.onclick=()=>{ motherOn=!motherOn;
+  if(motherOn){ ac(); startMother(); } else stopMother();
+  momBtn.classList.toggle('off',!motherOn);};
+
+/* Первый клик где угодно — запуск аудио (требование браузеров) */
+document.addEventListener('pointerdown', function once(){
+  if(soundOn){ ac(); syncSounds(); }
+  document.removeEventListener('pointerdown', once);
+});
+
+function siren(){
+  if(!soundOn||!AC) return; const c=AC;
+  for(let k=0;k<2;k++){
+    const o=c.createOscillator(), g=c.createGain(), t=c.currentTime+k*0.42;
+    o.type='sawtooth'; o.frequency.setValueAtTime(880,t);
+    o.frequency.exponentialRampToValueAtTime(420,t+0.3);
+    g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.34);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t+0.36);
+  }
+}
+function sadChord(){
+  if(!soundOn||!AC) return; const c=AC, t=c.currentTime;
+  [220,261.6,329.6].forEach((f,i)=>{
+    const o=c.createOscillator(), g=c.createGain();
+    o.type='sine'; o.frequency.value=f*(i===2?0.5:1);
+    g.gain.setValueAtTime(0.001,t+i*0.35); g.gain.linearRampToValueAtTime(0.16,t+i*0.35+0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+4.5);
+    o.connect(g); g.connect(master); o.start(t+i*0.35); o.stop(t+5);
+  });
+}
+function fanfare(){
+  if(!soundOn||!AC) return; const c=AC, t=c.currentTime;
+  const notes=[523,659,784,1046,784,1046];
+  notes.forEach((f,i)=>{
+    const o=c.createOscillator(), g=c.createGain();
+    o.type='triangle'; o.frequency.value=f;
+    const st=t+i*0.13;
+    g.gain.setValueAtTime(0.001,st); g.gain.linearRampToValueAtTime(0.2,st+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,st+0.5);
+    o.connect(g); g.connect(master); o.start(st); o.stop(st+0.55);
+  });
+  for(let k=0;k<3;k++){
+    const o2=c.createOscillator(), g2=c.createGain(), st=t+1.1+k*0.45;
+    o2.type='square'; o2.frequency.value=1046;
+    g2.gain.setValueAtTime(0.08,st); g2.gain.exponentialRampToValueAtTime(0.001,st+0.35);
+    o2.connect(g2); g2.connect(master); o2.start(st); o2.stop(st+0.4);
+  }
+}
+
+/* ================== ЭКГ ================== */
+const ecgC=document.getElementById('ecg'), ex=ecgC.getContext('2d');
+let phase=0, lastTs=0;
+function drawEcg(ts){
+  if(!lastTs) lastTs=ts;
+  const dt=(ts-lastTs)/1000; lastTs=ts;
+  phase+=dt*fetalHR/60; if(phase>=1) phase-=1;
+  const w=ecgC.width, h=ecgC.height;
+  ex.fillStyle='#02121f'; ex.fillRect(0,0,w,h);
+  ex.strokeStyle='rgba(30,70,110,.35)'; ex.lineWidth=1;
+  for(let gx=0;gx<w;gx+=30){ ex.beginPath(); ex.moveTo(gx,0); ex.lineTo(gx,h); ex.stroke(); }
+  for(let gy=0;gy<h;gy+=24){ ex.beginPath(); ex.moveTo(0,gy); ex.lineTo(w,gy); ex.stroke(); }
+  ex.lineWidth=2;
+  ex.strokeStyle= errors===0 ? '#39ff9d' : (errors===1 ? '#ffd23f' : '#ff4d4d');
+  ex.shadowColor=ex.strokeStyle; ex.shadowBlur=6;
+  ex.beginPath();
+  for(let x=0;x<=w;x+=2){
+    let p=((x/w - phase)%1+1)%1, v=0;
+    if(p<0.04) v=-0.25; else if(p<0.09) v=1.0; else if(p<0.14) v=-0.45;
+    else if(p<0.22) v=0.35; else if(p<0.3) v=-0.15;
+    const y=h/2 - v*(h*0.36);
+    x===0? ex.moveTo(x,y): ex.lineTo(x,y);
+  }
+  ex.stroke(); ex.shadowBlur=0;
+  requestAnimationFrame(drawEcg);
+}
+requestAnimationFrame(drawEcg);
+
+/* ================== ИНТЕРФЕЙС ================== */
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function log(cls,msg){ const l=document.getElementById('log');
+  const d=document.createElement('div'); d.className=cls; d.textContent=msg; l.prepend(d); }
+
+function renderProgress(){
+  const p=document.getElementById('prog'); p.innerHTML='';
+  stages.forEach((_,i)=>{ const d=document.createElement('div');
+    d.className='dot'+(i<stageIdx?' done':(i===stageIdx&&!over?' cur':'')); p.appendChild(d); });
+}
+function updateVitals(){
+  const e=Math.min(errors,2);
+  document.getElementById('bp').textContent=bpArr[e];
+  document.getElementById('temp').textContent=tArr[e];
+  document.getElementById('mp').textContent=mArr[e];
+  fetalHR=fArr[e]; document.getElementById('fhr').textContent=fetalHR;
+  document.getElementById('fhrBig').textContent=fetalHR;
+  document.getElementById('fhrBig').style.color= errors===0?'#39ff9d':(errors===1?'#ffd23f':'#ff4d4d');
+  document.getElementById('sweat').classList.toggle('show', errors>0);
+  document.getElementById('woman').classList.toggle('trembling', errors>0);
+  const sp=document.getElementById('speech');
+  sp.textContent=speechArr[stageIdx][Math.min(errors,2)];
+  startFetal(); // пересинхронизировать частоту с новым ЧСС
+}
+function fmtT(s){ const m=Math.floor(s/60), r=s%60; return m+':'+String(r).padStart(2,'0'); }
+function tick(){
+  if(over) return;
+  timeLeft--; document.getElementById('time').textContent=fmtT(Math.max(timeLeft,0));
+  document.getElementById('tfill').style.width=(Math.max(timeLeft,0)/(45*60)*100)+'%';
+  if(timeLeft<=0){ over=true; death('Время истекло: развился эклампсический приступ, помощь опоздала.'); }
+}
+function enterStage(i){
+  stageIdx=i; chosen=new Set(); renderProgress();
+  const st=stages[i];
+  document.getElementById('stTitle').textContent=st.title;
+  document.getElementById('stIntro').textContent=st.intro;
+  const box=document.getElementById('opts'); box.innerHTML='';
+  shuffle(st.opts.slice()).forEach(o=>{
+    const b=document.createElement('button'); b.className='opt'; b.textContent=o.t;
+    b.onclick=()=>pick(b,o); box.appendChild(b);
+  });
+  if(!over) updateVitals();
+}
+function pick(btn,o){
+  if(over) return;
+  if(o.ok){
+    if(chosen.has(btn)) return;
+    chosen.add(btn); btn.classList.add('good'); btn.disabled=true;
+    log('ok','✔ '+o.e);
+    if(chosen.size===5){
+      if(stageIdx===stages.length-1){ over=true; win(); }
+      else{ log('in','— Этап пройден. Переходим дальше… —');
+        setTimeout(()=>enterStage(stageIdx+1),1400); }
+    }
+  } else {
+    btn.classList.add('badflash'); btn.disabled=true;
+    errors++; timeLeft=Math.max(timeLeft-7*60,0);
+    updateVitals(); siren();
+    log('er','✖ ОШИБКА! −7 минут. '+o.e);
+    if(errors>=2){ over=true; setTimeout(()=>death('Две тяжёлые ошибки подряд: состояние стало необратимым.'),900); }
+  }
+}
+function death(reason){
+  stopFetal(); stopMother();
+  document.getElementById('deadTitle').textContent='Пациентка погибла…';
+  document.getElementById('deadSub').textContent=reason+' Ребёнок не спасён. Но анализ ниже — ваш шанс в следующий раз.';
+  document.getElementById('deadAn').innerHTML=DIAGNOSIS;
+  document.getElementById('dead').classList.add('show');
+  makeRain(); sadChord();
+}
+function win(){
+  stopFetal(); stopMother();
+  document.getElementById('winAn').innerHTML=DIAGNOSIS;
+  document.getElementById('win').classList.add('show');
+  fanfare(); startFireworks();
+}
+function makeRain(){
+  const r=document.getElementById('rain'); r.innerHTML='';
+  for(let i=0;i<90;i++){
+    const d=document.createElement('div'); d.className='drop';
+    d.style.left=Math.random()*100+'%';
+    d.style.animationDuration=(0.7+Math.random()*0.9)+'s';
+    d.style.animationDelay=(Math.random()*1.2)+'s';
+    d.style.opacity=0.25+Math.random()*0.5;
+    r.appendChild(d);
+  }
+}
+/* ---- Салюты ---- */
+const fw=document.getElementById('fire'), fx=fw.getContext('2d');
+let parts=[], fwRun=false;
+function sizeFire(){ fw.width=innerWidth; fw.height=innerHeight; }
+addEventListener('resize',sizeFire); sizeFire();
+function burst(x,y){
+  const colors=['#ffd23f','#ff5d6c','#5aa9ff','#39d98a','#ff9d3b','#d78bff'];
+  const col=colors[Math.floor(Math.random()*colors.length)];
+  for(let i=0;i<60;i++){
+    const a=Math.random()*Math.PI*2, sp=2+Math.random()*5;
+    parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,col});
+  }
+}
+function loopFire(){
+  if(!fwRun) return;
+  fx.fillStyle='rgba(0,0,0,0.16)'; fx.fillRect(0,0,fw.width,fw.height);
+  parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life-=0.012;
+    fx.globalAlpha=Math.max(p.life,0); fx.fillStyle=p.col;
+    fx.beginPath(); fx.arc(p.x,p.y,2.4,0,7); fx.fill(); });
+  parts=parts.filter(p=>p.life>0);
+  if(Math.random()<0.12) burst(fw.width*(0.15+Math.random()*0.7), fw.height*(0.12+Math.random()*0.4));
+  fx.globalAlpha=1;
+  requestAnimationFrame(loopFire);
+}
+function startFireworks(){ fwRun=true; parts=[]; for(let i=0;i<4;i++) burst(fw.width*Math.random(),fw.height*0.3); loopFire(); }
+
+/* ---- ПЕРЕЗАПУСК: всё стирается и перемешивается ---- */
+function restartGame(){
+  over=false; stageIdx=0; errors=0; chosen=new Set(); timeLeft=45*60;
+  document.getElementById('dead').classList.remove('show');
+  document.getElementById('win').classList.remove('show');
+  document.getElementById('rain').innerHTML='';
+  fwRun=false; parts=[]; fx.clearRect(0,0,fw.width,fw.height);
+  document.getElementById('log').innerHTML='<div class="in">Новая смена. Все ответы сброшены, порядок действий перемешан заново — зазубрить позиции не выйдет.</div>';
+  document.getElementById('time').textContent='45:00';
+  document.getElementById('tfill').style.width='100%';
+  updateVitals(); renderProgress(); enterStage(0);
+  if(timerH) clearInterval(timerH);
+  timerH=setInterval(tick,1000);
+}
+document.getElementById('restart').onclick=restartGame;
+
+/* старт */
+restartGame();
+</script>
+</body>
+</html>
