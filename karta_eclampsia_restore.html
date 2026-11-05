@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Интеллектуальная карта. Эклампсия</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#525659;font-family:'Segoe UI',Arial,sans-serif;color:#22303f}
+.page{width:1123px;height:794px;background:#fff;margin:14px auto;padding:26px 34px;box-shadow:0 4px 18px rgba(0,0,0,.45);position:relative;overflow:hidden;page-break-after:always}
+@media print{
+ @page{size:A4 landscape;margin:0}
+ body{background:#fff;zoom:1!important}
+ .page{margin:0;box-shadow:none;width:297mm;height:209.5mm}
+ .toolbar{display:none!important}
+}
+/* ---------- toolbar ---------- */
+.toolbar{position:fixed;top:0;left:0;right:0;z-index:50;background:#1f3a5f;color:#fff;padding:8px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.toolbar button{background:#0e7c7b;color:#fff;border:none;border-radius:5px;padding:7px 14px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.toolbar button:hover{background:#0a5f5e}
+.toolbar button.warn{background:#8c2f39}
+.toolbar button.warn:hover{background:#6d222b}
+.toolbar .exam{display:flex;align-items:center;gap:6px;font-size:13.5px;cursor:pointer}
+.toolbar #timer{font-weight:700;font-size:15px;background:#8c2f39;padding:4px 12px;border-radius:5px;display:none}
+/* ---------- header page1 ---------- */
+.hdr{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2.5px solid #1f3a5f;padding-bottom:10px;margin-bottom:14px}
+.hdr .t1{font-size:21px;font-weight:700;color:#1f3a5f;letter-spacing:.4px}
+.hdr .t2{font-size:12.5px;color:#5a6b7d;margin-top:3px}
+.plaque{border:3.5px solid #000;padding:6px 26px;font-family:'Times New Roman',serif;font-weight:700;font-size:24px;letter-spacing:5px;color:#000;white-space:nowrap}
+/* ---------- map ---------- */
+#map{position:relative;height:640px}
+#lines{position:absolute;inset:0;pointer-events:none;z-index:0}
+.central{position:absolute;left:14px;top:250px;width:190px;background:#1f3a5f;color:#fff;border-radius:10px;text-align:center;padding:26px 12px;font-weight:800;font-size:20px;letter-spacing:2px;box-shadow:0 4px 12px rgba(31,58,95,.5);z-index:1}
+.central small{display:block;font-weight:400;font-size:11px;margin-top:8px;letter-spacing:.3px}
+.branch{position:absolute;width:425px;background:#fdfdfe;border:1.5px solid #c6d0dc;border-left:5px solid;border-radius:8px;padding:12px 14px;z-index:1;box-shadow:0 2px 8px rgba(30,50,70,.12)}
+.branch h3{font-size:14.5px;margin-bottom:7px;letter-spacing:.3px}
+.branch .body{font-size:12.3px;line-height:1.5}
+.branch ul{list-style:none}
+.branch li{margin-bottom:5px;padding-left:14px;position:relative}
+.branch li:before{content:'▸';position:absolute;left:0;color:#8c2f39}
+.b1{border-left-color:#8c2f39}.b1 h3{color:#8c2f39}
+.b2{border-left-color:#0e7c7b}.b2 h3{color:#0e7c7b}
+.b3{border-left-color:#b07d2b}.b3 h3{color:#8a6320}
+.b4{border-left-color:#4a4e8c}.b4 h3{color:#4a4e8c}
+.chains{display:flex;align-items:stretch;gap:4px;margin-top:4px}
+.phase-mini{flex:1;background:#f4efe4;border:1px solid #d8cfae;border-radius:6px;padding:6px 4px;text-align:center;font-size:11px}
+.phase-mini b{display:block;color:#8a6320;font-size:11.5px}
+.phase-mini .num{display:inline-block;width:17px;height:17px;line-height:17px;border-radius:50%;background:#b07d2b;color:#fff;font-weight:700;font-size:11px;margin-bottom:3px}
+.arrow{align-self:center;color:#b07d2b;font-weight:700}
+.no-block{margin-top:9px;background:#fbecec;border:1.5px dashed #b3404a;border-radius:7px;padding:7px 10px;font-size:11.8px}
+.no-block b{color:#8c2f39}
+.just{color:#5a6b7d;font-size:11.5px}
+/* ---------- task pages ---------- */
+.page h2{font-size:17px;color:#1f3a5f;border-bottom:2px solid #1f3a5f;padding-bottom:6px;margin-bottom:12px;letter-spacing:.3px}
+.task{margin-bottom:16px}
+.task .tz{font-size:13.5px;font-weight:700;color:#8c2f39;margin-bottom:8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 18px}
+.cell{border:1.6px dashed #9aa8b8;border-radius:7px;padding:8px 12px;font-size:13px;background:#fbfcfd;min-height:42px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:.15s}
+.cell .slot{min-width:118px;border-bottom:2px solid #4a5b70;padding:3px 6px;color:#0e7c7b;font-weight:700;text-align:center;background:#eef4f8;border-radius:4px 4px 0 0;font-size:13px}
+.cell:hover{border-color:#0e7c7b}
+.bank{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding:10px;border:1.5px solid #c6d0dc;border-radius:8px;background:#f4f7fa;min-height:52px}
+.chip{background:#fff;border:1.5px solid #8c9bab;border-radius:16px;padding:5px 13px;font-size:12.5px;cursor:pointer;user-select:none;transition:.12s;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.chip:hover{border-color:#0e7c7b;color:#0e7c7b}
+.chip.sel{background:#0e7c7b;color:#fff;border-color:#0e7c7b;box-shadow:0 0 0 3px rgba(14,124,123,.3)}
+.chip.ok{background:#e2f4e4;border-color:#2e7d32;color:#1b5e20}
+.chip.bad{background:#fdecea;border-color:#b3404a;color:#8c2f39}
+.cell.ok{border-color:#2e7d32;background:#eef8ef}
+.cell.bad{border-color:#b3404a;background:#fdf1f0;animation:shk .4s}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.pairs{display:grid;grid-template-columns:1fr 60px 1fr;gap:7px;align-items:center}
+.pcol{border:1.5px solid #c6d0dc;border-radius:7px;padding:8px 12px;font-size:12.6px;background:#fbfcfd;cursor:pointer;transition:.15s;min-height:40px}
+.pcol:hover{border-color:#0e7c7b}
+.pcol.sel{background:#0e7c7b;color:#fff;border-color:#0e7c7b}
+.pcol.ok{background:#eef8ef;border-color:#2e7d32}
+.pcol.bad{background:#fdf1f0;border-color:#b3404a;animation:shk .4s}
+.pcol small{display:block;color:#5a6b7d;font-size:11px}
+.pcol.sel small{color:#d7ecea}
+.pnum{width:34px;height:34px;line-height:34px;border-radius:50%;background:#eef4f8;border:1.5px solid #9aa8b8;text-align:center;font-weight:800;color:#1f3a5f;margin:0 auto}
+.phrow{display:flex;align-items:center;gap:10px;border:1.5px solid #c6d0dc;border-radius:7px;padding:9px 13px;font-size:13.4px;background:#fbfcfd;margin-bottom:7px;cursor:pointer;transition:.15s}
+.phrow:hover{border-color:#b07d2b}
+.phrow.sel{background:#b07d2b;color:#fff;border-color:#b07d2b}
+.phrow.ok{background:#eef8ef;border-color:#2e7d32}
+.phrow.bad{background:#fdf1f0;border-color:#b3404a;animation:shk .4s}
+.phrow .n{width:28px;height:28px;line-height:26px;border-radius:50%;border:2px solid #9aa8b8;text-align:center;font-weight:800;flex:none;background:#fff;color:#1f3a5f}
+.phrow small{color:#5a6b7d}
+.phrow.sel small{color:#f4efe4}
+.case{background:#f4f7fa;border:1.5px solid #c6d0dc;border-radius:8px;padding:11px 14px;font-size:12.8px;line-height:1.55;margin-bottom:12px}
+.case b{color:#1f3a5f}
+.q{margin-bottom:9px}
+.q .qt{font-size:12.8px;font-weight:600;margin-bottom:4px}
+.opt{display:inline-block;border:1.4px solid #9aa8b8;border-radius:14px;padding:4px 12px;font-size:12.2px;margin:2px 6px 2px 0;cursor:pointer;background:#fff;transition:.12s}
+.opt:hover{border-color:#0e7c7b;color:#0e7c7b}
+.opt.sel{background:#1f3a5f;border-color:#1f3a5f;color:#fff}
+.opt.ok{background:#e2f4e4;border-color:#2e7d32;color:#1b5e20}
+.opt.bad{background:#fdecea;border-color:#b3404a;color:#8c2f39;animation:shk .4s}
+.opt .m{display:none;font-size:11px;margin-top:2px;font-weight:400}
+.resline{margin-top:14px;border-top:2px solid #1f3a5f;padding-top:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.sig{font-size:12.5px;color:#33455a;line-height:2}
+.sig .fill{display:inline-block;border-bottom:1.5px solid #4a5b70;min-width:170px}
+.verdict{border:2px solid #1f3a5f;border-radius:8px;padding:10px 16px;font-size:14px;min-width:300px}
+.verdict .sc{font-size:24px;font-weight:800;color:#1f3a5f}
+.etalon{display:none;margin-top:12px;border:2px solid #8c2f39;border-radius:8px;padding:12px 16px;font-size:12.4px;line-height:1.55;background:#fdf7f7}
+.etalon h4{color:#8c2f39;margin:8px 0 3px}
+.etalon ul{padding-left:16px;margin:3px 0}
+.note{font-size:11.5px;color:#5a6b7d;margin-top:5px;font-style:italic}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button onclick="window.print()">🖨 Печать А4 (альбомная)</button>
+  <button class="warn" onclick="location.reload()">⟲ Сбросить и перемешать</button>
+  <label class="exam"><input type="checkbox" id="examChk"> Экзамен: 15 минут</label>
+  <span id="timer">15:00</span>
+  <button onclick="checkWork()">✓ Проверить работу (однократно)</button>
+  <button onclick="document.getElementById('etalon').style.display=document.getElementById('etalon').style.display==='block'?'none':'block'">📖 Эталонный разбор</button>
+  <span id="hintbar" style="font-size:12.5px;opacity:.85"></span>
+</div>
+
+<!-- ================= PAGE 1 : MAP ================= -->
+<section class="page">
+  <div class="hdr">
+    <div>
+      <div class="t1">Интеллектуальная карта. Акушерство и гинекология</div>
+      <div class="t2">Неотложные состояния в акушерстве · для студентов медицинского колледжа</div>
+    </div>
+    <div class="plaque">ЭКЛАМПСИЯ</div>
+  </div>
+
+  <div id="map">
+    <svg id="lines" width="100%" height="100%"></svg>
+    <div class="central">ЭКЛАМПСИЯ<small>судорожный приступ при тяжёлой преэклампсии<br>беременность ≥ 20 недель</small></div>
+
+    <div class="branch b1" id="br1">
+      <h3>1. Определение и патогенез</h3>
+      <div class="body">Судорожный приступ у беременной с преэклампсией.<br>
+      <b>Цепочка:</b> генерализованный ангиоспазм → эндотелиальная дисфункция → ишемия и отёк головного мозга → ирритация коры → приступ.<br>
+      <b>Чем опасна:</b> инсульт, отёк лёгких, отслойка плаценты, острая гипоксия плода, эклампсический статус.</div>
+    </div>
+
+    <div class="branch b2" id="br2">
+      <h3>2. Клинические симптомы с обоснованием</h3>
+      <ul>
+        <li>АД <b>160/110</b> и выше <span class="just">⇒ генерализованный ангиоспазм</span></li>
+        <li>Протеинурия <b>3 г/сут</b> <span class="just">⇒ повышение проницаемости почечного фильтра</span></li>
+        <li>Анасарка, отёки <span class="just">⇒ выход жидкой части крови в ткани</span></li>
+        <li>Мелькание «мушек» перед глазами <span class="just">⇒ ишемия сетчатки и затылочной коры</span></li>
+        <li>Головная боль, сонливость <span class="just">⇒ отёк мозга, повышение ВЧД</span></li>
+        <li>Боль в правом подреберье <span class="just">⇒ отёк и растяжение капсулы печени</span></li>
+      </ul>
+    </div>
+
+    <div class="branch b3" id="br3">
+      <h3>3. Фазы припадка</h3>
+      <div class="chains">
+        <div class="phase-mini"><span class="num">1</span><b>Фибриллярная</b>15–30 с</div><div class="arrow">→</div>
+        <div class="phase-mini"><span class="num">2</span><b>Тоническая</b>до 20 с<br>опистотонус, апноэ</div><div class="arrow">→</div>
+        <div class="phase-mini"><span class="num">3</span><b>Клоническая</b>60–90 с<br>судороги, пена</div><div class="arrow">→</div>
+        <div class="phase-mini"><span class="num">4</span><b>Кома</b>амнезия;<br>риск эклампсического статуса</div>
+      </div>
+    </div>
+
+    <div class="branch b4" id="br4">
+      <h3>4. Неотложная помощь</h3>
+      <ul>
+        <li>Уложить на бок, зафиксировать язык, защитить от травм</li>
+        <li>Магния сульфат 25% — 10–20 мл в/в медленно</li>
+        <li>Диазепам 10 мг в/в при повторных судорогах</li>
+        <li>Кислород, при необходимости ИВЛ</li>
+        <li>Гипотензивные (нифедипин), КТГ плода</li>
+        <li>Экстренное родоразрешение после стабилизации</li>
+      </ul>
+      <div class="no-block"><b>НЕЛЬЗЯ:</b> фуросемид (усиливает гиповолемию и ангиоспазм) · удерживать больную силой · укладывать на спину · давать пить/лекарства через рот</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PAGE 2 : TASKS 1–2 ================= -->
+<section class="page">
+  <h2>Задания. Заполните пустые места карты</h2>
+
+  <div class="task">
+    <div class="tz">Задание 1. Вставьте термины в ячейки №1–№8 (в банке есть лишние — ловушки)</div>
+    <div class="grid" id="cells"></div>
+    <div class="bank" id="bank"></div>
+    <div class="note">Клик по термину — выбор, клик по ячейке — вставить. Клик по заполненной ячейке без выбранного термина — вернуть термин в банк.</div>
+  </div>
+
+  <div class="task">
+    <div class="tz">Задание 2. Сопоставьте симптом и его механизм (по одному клику с каждой стороны)</div>
+    <div class="pairs" id="pairs"></div>
+  </div>
+</section>
+
+<!-- ================= PAGE 3 : TASKS 3–4 + RESULT ================= -->
+<section class="page">
+  <h2>Задание 3. Фазы припадка — расставьте по порядку</h2>
+  <div class="task" id="phases"></div>
+
+  <h2>Задание 4. Клинический кейс</h2>
+  <div class="case"><b>Кейс.</b> Женщина 32 лет вызвала скорую помощь: головная боль, «мушки» перед глазами. Дно матки — на середине между пупком и мечевидным отростком; при третьем приёме Леопольда — мягкое тестоватое образование, не баллотирующее. АД 185/110, температура 38 °C, резкие боли при мочеиспускании после переохлаждения; в анамнезе хронический пиелонефрит. По дороге в роддом — резкая боль в животе, кровянистые выделения, ЧСС плода 100 уд/мин.</div>
+  <div id="questions"></div>
+
+  <div class="resline">
+    <div class="sig">Ф.И.О. <span class="fill"></span><br>Группа <span class="fill" style="min-width:120px"></span> Дата <span class="fill" style="min-width:110px"></span></div>
+    <div class="verdict" id="verdict">Нажмите «Проверить работу» на верхней панели.<div class="sc" id="sc"></div></div>
+  </div>
+
+  <div class="etalon" id="etalon">
+    <b>ЭТАЛОННЫЙ РАЗБОР КЕЙСА</b>
+    <h4>Полный диагноз</h4>
+    Беременность II триместра (дно матки между пупком и мечевидным отростком). <b>Преэклампсия тяжёлой степени</b> (АД 185/110, «мушки», головная боль) — эклампсическая готовность. <b>Обострение хронического пиелонефрита</b> (t 38 °C, дизурия после переохлаждения). По дороге — <b>преждевременная отслойка нормально расположенной плаценты (ПОНРП)</b>: резкая боль в животе, кровянистые выделения, мягкое тестоватое образование, не баллотирующее, при третьем приёме Леопольда. Начинающаяся гипоксия плода (ЧСС 100).
+    <h4>Тактика фельдшера СМП</h4>
+    <ul><li>Положение на левом боку (не на спине!), покой</li><li>Кислород</li><li>Магния сульфат 25% — 10–20 мл в/в медленно</li><li>Нифедипин 10 мг под язык при АД ≥ 160/110</li><li>Венозный доступ; срочная госпитализация в роддом; предупреждение роддома по рации</li><li>Нельзя: фуросемид, дибазол/папаверин как основную терапию, выжидание</li></ul>
+    <h4>Тактика приёмного отделения роддома</h4>
+    <ul><li>КТГ, УЗИ (ретроплацентарная гематома)</li><li>ОАК, коагулограмма, ОАМ, креатинин, тромбоциты</li><li>Продолжение магнезии; консультация анестезиолога-реаниматолога</li><li>Экстренное кесарево сечение (ПОНРП + дистресс плода) — при ПОНРП кесарево показано всегда, роды через естественные родовые пути недопустимы</li></ul>
+    <h4>Госпитализация и лечение после операции</h4>
+    <ul><li>Отделение: <b>ОРИТ родильного дома</b></li><li>Магнезия продолжается 24 часа после родов</li><li>Пиелонефрит: антибиотики — цефалоспорины III поколения (цефтриаксон); нельзя тетрациклины (токсичны для плода)</li><li>Контроль: диурез, АД, рефлексы, коагулограмма (риск ДВС-синдрома)</li></ul>
+  </div>
+</section>
+
+<script>
+function sh(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+/* ---- data ---- */
+var cellsData=[
+ {id:'c1',lbl:'Критерий тяжёлой АГ:',blank:'___ / ___',ans:'t1'},
+ {id:'c2',lbl:'Протеинурия при тяжёлой ПЭ:',blank:'___ г/сут',ans:'t2'},
+ {id:'c3',lbl:'Олигурия: менее',blank:'___ мл/ч',ans:'t3'},
+ {id:'c4',lbl:'Тромбоциты: менее',blank:'___ ×10⁹/л',ans:'t4'},
+ {id:'c5',lbl:'Магния сульфат 25%:',blank:'___ медленно',ans:'t5'},
+ {id:'c6',lbl:'Диазепам при судорогах:',blank:'___ в/в',ans:'t6'},
+ {id:'c7',lbl:'ЧДД для отмены магнезии: менее',blank:'___ в мин',ans:'t7'},
+ {id:'c8',lbl:'Антидот гипермагниемии — кальция глюконат 10%:',blank:'___',ans:'t8'}
+];
+var bank=[
+ {id:'t1',t:'160 / 110 мм рт. ст.'},{id:'t2',t:'3 г/сут'},{id:'t3',t:'30 мл/ч'},
+ {id:'t4',t:'100 ×10⁹/л'},{id:'t5',t:'20 мл в/в'},{id:'t6',t:'10 мг'},
+ {id:'t7',t:'16 в мин'},{id:'t8',t:'10 мл'},
+ {id:'d1',t:'180 / 90 мм рт. ст.'},{id:'d2',t:'5 г/сут'},{id:'d3',t:'20 мл/ч'},
+ {id:'d4',t:'40 мл струйно'},{id:'d5',t:'24 в мин'},{id:'d6',t:'фуросемид 40 мг в/в'}
+];
+var pairs=[
+ {s:'Мелькание «мушек» перед глазами',m:'Ишемия сетчатки и затылочной коры мозга'},
+ {s:'Головная боль, сонливость',m:'Отёк мозга, повышение внутричерепного давления'},
+ {s:'Анасарка, распространённые отёки',m:'Выход жидкой части крови в межклеточное пространство'},
+ {s:'Боль в правом подреберье',m:'Отёк и растяжение капсулы печени'},
+ {s:'Протеинурия',m:'Повышение проницаемости клубочкового фильтра'}
+];
+var phases=[
+ {id:'p1',t:'Фибриллярная фаза',d:'15–30 с, подёргивания мышц лица'},
+ {id:'p2',t:'Тоническая фаза',d:'до 20 с, опистотонус, апноэ, прикус языка'},
+ {id:'p3',t:'Клоническая фаза',d:'60–90 с, судороги всех мышц, пена, цианоз'},
+ {id:'p4',t:'Кома',d:'потеря памяти; опасность эклампсического статуса'}
+];
+var questions=[
+ {q:'1. О чём говорит «мягкое тестоватое образование, которое не баллотирует», при третьем приёме Леопольда?',
+  o:['О предлежании плаценты','О ретроплацентарной гематоме — признаке отслойки плаценты','О многоводии','О двойне'],a:1},
+ {q:'2. Почему фельдшеру запрещено вводить фуросемид при преэклампсии?',
+  o:['Он повышает артериальное давление','У него аллергический риск выше, чем у других диуретиков','Он усиливает гиповолемию и ангиоспазм, повышает риск тромбообразования и ДВС-синдрома','Он токсичен для плода через плаценту'],a:2},
+ {q:'3. Первое действие при начавшемся судорожном приступе:',
+  o:['Ввести окситоцин для стимуляции родов','Приложить ко лбу лёд','Уложить на бок, зафиксировать язык, защитить от травм','Дать выпить успокоительное'],a:2},
+ {q:'4. В какое отделение подлежит госпитализации беременная после операции?',
+  o:['Гинекологическое отделение','ОРИТ родильного дома','Терапевтическое отделение больницы','Приёмное отделение — только для осмотра'],a:1},
+ {q:'5. Триада для отмены магнезии (гипермагниемия):',
+  o:['ЧДД менее 16 в мин, диурез менее 30 мл/ч, угнетение коленных рефлексов','АД ниже 90/60, тахикардия, лихорадка','ЧДД более 24 в мин, полиурия, гиперемия лица','Температура выше 38 °C, боли при мочеиспускании, отёки'],a:0}
+];
+
+/* ---- build cells & bank ---- */
+var selChip=null;
+var bankEl=document.getElementById('bank'),cellsEl=document.getElementById('cells');
+sh(bank).forEach(function(ch){
+  var d=document.createElement('div');d.className='chip';d.textContent=ch.t;d.dataset.id=ch.id;
+  d.onclick=function(){if(d.classList.contains('done'))return;document.querySelectorAll('.chip.sel').forEach(function(x){x.classList.remove('sel')});
+    if(selChip===d){selChip=null;return;}selChip=d;d.classList.add('sel');};
+  bankEl.appendChild(d);ch.el=d;
+});
+cellsData.forEach(function(c){
+  var d=document.createElement('div');d.className='cell';d.innerHTML=c.lbl+' <span class="slot"></span>';
+  d.onclick=function(){
+    if(selChip){
+      if(d.dataset.chip){var prev=bank.find(function(x){return x.id===d.dataset.chip;});prev.el.classList.remove('done');prev.el.classList.remove('ok','bad');prev.el.style.display='';}
+      d.dataset.chip=selChip.dataset.id;d.querySelector('.slot').textContent=selChip.textContent;
+      selChip.style.display='none';selChip.classList.remove('sel');selChip.classList.add('done');selChip=null;
+    } else if(d.dataset.chip){
+      var p=bank.find(function(x){return x.id===d.dataset.chip;});p.el.classList.remove('done','ok','bad');p.el.style.display='';
+      d.dataset.chip='';d.querySelector('.slot').textContent='';
+    }
+  };
+  cellsEl.appendChild(d);c.el=d;
+});
+
+/* ---- pairs ---- */
+var selSym=null;
+var syms=sh(pairs.slice()),mechs=sh(pairs.slice());
+var pairsEl=document.getElementById('pairs');
+syms.forEach(function(p){var d=document.createElement('div');d.className='pcol sym';d.textContent=p.s;
+  d.onclick=function(){document.querySelectorAll('.pcol.sel').forEach(function(x){x.classList.remove('sel')});
+    if(selSym===d){selSym=null;return;}selSym=d;d.classList.add('sel');};pairsEl.appendChild(d);p.elS=d;});
+mechs.forEach(function(p){var d=document.createElement('div');d.className='pcol mech';d.innerHTML=p.m+'<small></small>';
+  d.onclick=function(){if(selSym){if(d.dataset.chip){var pv=pairs.filter(function(x){return x.m===d.dataset.chip;})[0];pv.elS.classList.remove('done','ok','bad');pv.elS.style.display='';}
+    d.dataset.chip=selSym.textContent;selSym.style.display='none';selSym.classList.add('done');selSym=null;
+    d.querySelector('small').textContent=d.dataset.chip;}
+  else if(d.dataset.chip){var pv2=pairs.filter(function(x){return x.s===d.dataset.chip;})[0];pv2.elS.classList.remove('done','ok','bad');pv2.elS.style.display='';d.dataset.chip='';d.querySelector('small').textContent='';}};
+  pairsEl.appendChild(d);p.elM=d;});
+
+/* ---- phases ---- */
+var phEl=document.getElementById('phases'),numCtr=1;
+sh(phases.slice()).forEach(function(p){
+  var d=document.createElement('div');d.className='phrow';
+  d.innerHTML='<span class="n"></span><span><b>'+p.t+'</b> — <small>'+p.d+'</small></span>';
+  d.dataset.pid=p.id;
+  d.onclick=function(){
+    if(d.dataset.num){delete d.dataset.num;d.querySelector('.n').textContent='';d.classList.remove('sel');
+      var used=1;document.querySelectorAll('.phrow').forEach(function(r){if(r.dataset.num){r.dataset.num=used;r.querySelector('.n').textContent=used;used++;}});
+      numCtr=used;return;}
+    d.dataset.num=numCtr;d.querySelector('.n').textContent=numCtr;d.classList.add('sel');numCtr++;
+  };
+  phEl.appendChild(d);p.elPh=d;
+});
+
+/* ---- questions ---- */
+var qEl=document.getElementById('questions');
+questions.forEach(function(q){
+  var box=document.createElement('div');box.className='q';
+  box.innerHTML='<div class="qt">'+q.q+'</div>';
+  var idx=sh([0,1,2,3]);
+  idx.forEach(function(i){
+    var o=document.createElement('span');o.className='opt';o.textContent=q.o[i];
+    o.onclick=function(){if(document.body.classList.contains('checked'))return;
+      box.querySelectorAll('.opt').forEach(function(x){x.classList.remove('sel')});
+      box.querySelectorAll('.opt').forEach(function(x){if(x.textContent===q.o[i])x.classList.add('sel')});
+      box.dataset.ans=i;};
+    box.appendChild(o);
+  });
+  qEl.appendChild(box);
+});
+
+/* ---- check ---- */
+var done=false;
+function checkWork(){
+  if(done)return;done=true;document.body.classList.add('checked');
+  var score=0;
+  cellsData.forEach(function(c){
+    var ok=c.el.dataset.chip===c.ans;if(ok)score++;
+    c.el.classList.add(ok?'ok':'bad');
+    if(c.el.dataset.chip){var ch=bank.find(function(x){return x.id===c.el.dataset.chip;});ch.el.classList.remove('done');ch.el.style.display='';ch.el.classList.add(ok?'ok':'bad');}
+  });
+  pairs.forEach(function(p){
+    var ok=p.elM&&p.elM.dataset.chip===p.s;if(ok)score++;
+    if(p.elS.style.display==='none'){p.elS.style.display='';p.elS.classList.remove('done');p.elS.classList.add(ok?'ok':'bad');}
+    if(p.elM){p.elM.classList.add(ok?'ok':'bad');}
+  });
+  document.querySelectorAll('.phrow').forEach(function(r,idx){
+    var need=r.dataset.pid==='p1'?1:r.dataset.pid==='p2'?2:r.dataset.pid==='p3'?3:4;
+    var ok=(+r.dataset.num||0)===need;if(ok)score++;
+    r.classList.remove('sel');r.classList.add(ok?'ok':'bad');
+    if(!r.dataset.num)r.querySelector('.n').textContent='·';
+  });
+  document.querySelectorAll('.q').forEach(function(b,qi){
+    var q=questions[qi];var ok=(+b.dataset.ans)===q.a;if(ok)score++;
+    var opts=b.querySelectorAll('.opt');
+    opts.forEach(function(o){if(o.textContent===q.o[q.a])o.classList.add('ok');if(o.classList.contains('sel')&&!ok)o.classList.add('bad');});
+    if(!b.dataset.ans)opts.forEach(function(o){if(o.textContent===q.o[q.a])o.classList.add('ok');});
+  });
+  var pass=score>=18;
+  document.getElementById('sc').textContent='Баллов: '+score+' из 22';
+  var v=document.getElementById('verdict');
+  v.innerHTML='<b>'+(pass?'ЗАЧЕТ':'НЕЗАЧЕТ')+'</b> (порог — 18 из 22, работа проверяется однократно)<div class="sc" id="sc2">Баллов: '+score+' из 22</div>'+
+   '<div style="font-size:12px;margin-top:5px">'+(pass?'Карта заполнена верно. Эклампсия усвоена.':'Разберите отмеченные красным пункты — блок «Эталонный разбор» ниже.')+'</div>';
+  if(examInt){clearInterval(examInt);examInt=null;}
+}
+
+/* ---- exam timer ---- */
+var examInt=null,left=15*60;
+document.getElementById('examChk').addEventListener('change',function(){
+  var t=document.getElementById('timer');
+  if(this.checked){t.style.display='';left=15*60;
+    examInt=setInterval(function(){left--;var m=Math.floor(left/60),s=left%60;
+      t.textContent=m+':'+(s<10?'0':'')+s;
+      if(left<=0){clearInterval(examInt);examInt=null;t.textContent='ВРЕМЯ ВЫШЛО';if(!done)checkWork();}},1000);
+  }else{clearInterval(examInt);examInt=null;t.style.display='none';}
+});
+
+/* ---- map lines ---- */
+function drawLines(){
+  var map=document.getElementById('map'),svg=document.getElementById('lines');
+  var mr=map.getBoundingClientRect(),c=document.querySelector('.central').getBoundingClientRect();
+  svg.innerHTML='';var cx=c.right-mr.left,cy=c.top-mr.top+c.height/2;
+  ['br1','br2','br3','br4'].forEach(function(id){
+    var r=document.getElementById(id).getBoundingClientRect();
+    var x=r.left-mr.left,y=r.top-mr.top+r.height/2;
+    var p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d','M'+cx+' '+cy+' C'+(cx+60)+' '+cy+' '+(x-60)+' '+y+' '+x+' '+y);
+    p.setAttribute('fill','none');p.setAttribute('stroke','#8c9bab');p.setAttribute('stroke-width','2.2');
+    p.setAttribute('stroke-dasharray','6 6');svg.appendChild(p);
+  });
+}
+window.addEventListener('load',function(){drawLines();setTimeout(drawLines,300);});
+window.addEventListener('resize',drawLines);
+
+/* ---- screen scale ---- */
+function fit(){var w=Math.max(500,document.documentElement.clientWidth-24);document.body.style.zoom=Math.min(1,w/1123);}
+window.addEventListener('resize',fit);fit();
+window.addEventListener('beforeprint',function(){document.body.style.zoom=1;});
+window.addEventListener('afterprint',fit);
+</script>
+</body>
+</html>
