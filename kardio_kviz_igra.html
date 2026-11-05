@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кардио-Квиз: Игра о сердце и сосудах</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: radial-gradient(ellipse at 50% -20%, #1a2a4a 0%, #0d1428 55%, #070b16 100%);
+    color:#eef2ff; min-height:100vh; overflow-x:hidden;
+  }
+  .wrap { max-width:860px; margin:0 auto; padding:16px; }
+
+  /* ===== Верхняя панель ===== */
+  .topbar {
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:10px 16px; border-radius:16px; margin-bottom:14px;
+    background:linear-gradient(135deg, rgba(255,60,90,.12), rgba(40,80,200,.12));
+    border:1px solid rgba(120,160,255,.18); backdrop-filter:blur(6px);
+  }
+  .logo { font-weight:800; font-size:18px; letter-spacing:.5px; }
+  .logo .hrt { color:#ff4d6d; animation:pulse 1.2s infinite; display:inline-block; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 25%{transform:scale(1.25)} 40%{transform:scale(1)} }
+  .stats { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .stat { text-align:center; min-width:64px; }
+  .stat .val { font-size:18px; font-weight:800; }
+  .stat .lbl { font-size:10px; opacity:.65; text-transform:uppercase; letter-spacing:1px; }
+  .lives { font-size:20px; letter-spacing:2px; filter:drop-shadow(0 0 6px rgba(255,60,90,.7)); }
+  .sndbtn {
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2);
+    color:#eef2ff; border-radius:10px; padding:6px 12px; cursor:pointer; font-size:15px;
+  }
+  .sndbtn:hover { background:rgba(255,255,255,.16); }
+
+  /* ===== HP пациента ===== */
+  .hpwrap { margin:4px 2px 14px; }
+  .hplabel { display:flex; justify-content:space-between; font-size:12px; opacity:.75; margin-bottom:4px; }
+  .hpbar { height:14px; border-radius:10px; background:rgba(255,255,255,.08); overflow:hidden; border:1px solid rgba(255,255,255,.12); }
+  .hpfill {
+    height:100%; width:100%; border-radius:10px; transition:width .6s ease, background .6s ease;
+    background:linear-gradient(90deg,#2ecc71,#a8e063);
+  }
+  .hpfill.warn { background:linear-gradient(90deg,#f39c12,#f7d794); }
+  .hpfill.crit { background:linear-gradient(90deg,#e74c3c,#ff6b6b); animation:critblink .8s infinite; }
+  @keyframes critblink { 50% { opacity:.55; } }
+
+  /* ===== Экраны ===== */
+  .screen { display:none; animation:fadeIn .4s ease; }
+  .screen.active { display:block; }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+
+  .card {
+    background:rgba(255,255,255,.05); border:1px solid rgba(140,170,255,.15);
+    border-radius:20px; padding:28px; box-shadow:0 18px 50px rgba(0,0,0,.45);
+  }
+  h1 { font-size:30px; margin-bottom:10px; }
+  h1 span { color:#ff4d6d; }
+  .sub { opacity:.85; line-height:1.6; margin-bottom:18px; }
+
+  .rules { list-style:none; margin:14px 0 22px; }
+  .rules li { padding:9px 14px; margin-bottom:8px; border-radius:12px; background:rgba(255,255,255,.05); border-left:3px solid #5b8cff; font-size:15px; }
+  .rules li b { color:#ffd166; }
+
+  .bigbtn {
+    display:inline-block; border:none; cursor:pointer; font-size:18px; font-weight:800;
+    padding:15px 40px; border-radius:14px; color:#fff; letter-spacing:.5px;
+    background:linear-gradient(135deg,#ff4d6d,#c026d3);
+    box-shadow:0 8px 24px rgba(255,60,120,.4); transition:transform .15s, box-shadow .15s;
+  }
+  .bigbtn:hover { transform:translateY(-2px) scale(1.03); box-shadow:0 12px 32px rgba(255,60,120,.55); }
+  .bigbtn.blue { background:linear-gradient(135deg,#5b8cff,#38bdf8); box-shadow:0 8px 24px rgba(80,140,255,.4); }
+  .bigbtn.gray { background:linear-gradient(135deg,#64748b,#475569); box-shadow:none; font-size:15px; padding:12px 26px; }
+
+  /* ===== Вопрос ===== */
+  .qhead { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px; }
+  .qbadge {
+    font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
+    padding:5px 14px; border-radius:20px; background:rgba(91,140,255,.18); color:#9dc0ff;
+    border:1px solid rgba(91,140,255,.35);
+  }
+  .combo { font-size:14px; font-weight:800; color:#ffd166; }
+  .timerwrap { height:10px; border-radius:8px; background:rgba(255,255,255,.08); margin:10px 0 18px; overflow:hidden; }
+  .timerfill { height:100%; background:linear-gradient(90deg,#38bdf8,#a78bfa); transition:width .3s linear; }
+  .timerfill.low { background:linear-gradient(90deg,#ff4d6d,#ff8787); }
+  .qtext { font-size:21px; font-weight:700; line-height:1.45; margin-bottom:20px; min-height:56px; }
+
+  .answers { display:grid; gap:11px; }
+  .ans {
+    text-align:left; cursor:pointer; border-radius:14px; padding:14px 18px; font-size:15.5px; line-height:1.4;
+    background:rgba(255,255,255,.06); border:2px solid rgba(255,255,255,.12); color:#eef2ff;
+    transition:all .18s ease; display:flex; gap:12px; align-items:center;
+  }
+  .ans .key {
+    flex-shrink:0; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:15px; background:linear-gradient(135deg,#5b8cff,#38bdf8);
+  }
+  .ans:hover:not(:disabled) { background:rgba(91,140,255,.2); border-color:#5b8cff; transform:translateX(5px); }
+  .ans.correct { background:rgba(46,204,113,.22)!important; border-color:#2ecc71!important; animation:ok .5s; }
+  .ans.wrong { background:rgba(231,76,60,.22)!important; border-color:#e74c3c!important; animation:shake .45s; }
+  .ans.dim { opacity:.4; }
+  .ans:disabled { cursor:default; }
+  @keyframes ok { 0%{transform:scale(1)} 40%{transform:scale(1.03)} 100%{transform:scale(1)} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+
+  .feedback { margin-top:16px; padding:14px 18px; border-radius:14px; font-size:14.5px; line-height:1.55; display:none; }
+  .feedback.show { display:block; animation:fadeIn .3s; }
+  .feedback.good { background:rgba(46,204,113,.12); border:1px solid rgba(46,204,113,.4); }
+  .feedback.bad  { background:rgba(231,76,60,.12);  border:1px solid rgba(231,76,60,.4); }
+  .feedback .pts { float:right; font-weight:800; font-size:16px; }
+  .nextbtn { margin-top:16px; }
+
+  /* ===== Финал ===== */
+  .final-emoji { font-size:72px; text-align:center; margin-bottom:8px; animation:pop .6s; }
+  @keyframes pop { from{transform:scale(0)} 60%{transform:scale(1.2)} to{transform:scale(1)} }
+  .score-big { font-size:52px; font-weight:900; text-align:center; color:#ffd166; text-shadow:0 0 30px rgba(255,209,102,.5); }
+  .rank { text-align:center; font-size:22px; font-weight:800; margin:8px 0 4px; }
+  .finalstats { display:flex; justify-content:center; gap:22px; margin:18px 0; flex-wrap:wrap; }
+  .fst { text-align:center; padding:12px 20px; border-radius:14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); }
+  .fst .v { font-size:24px; font-weight:800; }
+  .fst .l { font-size:11px; opacity:.7; text-transform:uppercase; letter-spacing:1px; }
+  .center { text-align:center; }
+
+  /* Салют */
+  .firework { position:fixed; width:8px; height:8px; border-radius:50%; pointer-events:none; animation:fw 1.4s ease-out forwards; z-index:99; }
+  @keyframes fw { from{transform:translate(0,0) scale(1); opacity:1} to{transform:translate(var(--dx),var(--dy)) scale(.2); opacity:0} }
+
+  /* Тряска экрана при ошибке */
+  .quake { animation:qk .5s; }
+  @keyframes qk { 0%,100%{transform:translate(0)} 25%{transform:translate(-6px,3px)} 50%{transform:translate(6px,-3px)} 75%{transform:translate(-4px,2px)} }
+
+  .progress-dots { display:flex; gap:5px; flex-wrap:wrap; margin-top:14px; }
+  .dot { width:12px; height:12px; border-radius:50%; background:rgba(255,255,255,.15); }
+  .dot.ok { background:#2ecc71; }
+  .dot.fail { background:#e74c3c; }
+  .dot.cur { background:#ffd166; box-shadow:0 0 8px #ffd166; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Панель сверху -->
+  <div class="topbar" id="topbar" style="display:none;">
+    <div class="logo"><span class="hrt">❤</span> Кардио-Квиз</div>
+    <div class="stats">
+      <div class="stat"><div class="val" id="uiScore">0</div><div class="lbl">очки</div></div>
+      <div class="stat"><div class="val" id="uiQnum">1/30</div><div class="lbl">вопрос</div></div>
+      <div class="stat"><div class="lives" id="uiLives">❤❤❤</div><div class="lbl">жизни</div></div>
+      <button class="sndbtn" id="sndBtn" onclick="toggleSound()">🔊</button>
+    </div>
+  </div>
+
+  <!-- Полоса HP пациента -->
+  <div class="hpwrap" id="hpwrap" style="display:none;">
+    <div class="hplabel"><span>🫀 Состояние пациента</span><span id="uiHpTxt">100%</span></div>
+    <div class="hpbar"><div class="hpfill" id="hpfill"></div></div>
+  </div>
+
+  <!-- ЭКРАН СТАРТА -->
+  <div class="screen active" id="scrStart">
+    <div class="card">
+      <h1>🫀 Кардио-<span>Квиз</span></h1>
+      <p class="sub">30 вопросов о болезнях сердца и сосудов: как их распознать, как диагностировать и как предупредить. Вы играете за врача скорой помощи — каждое неверное решение бьёт по состоянию пациента!</p>
+      <ul class="rules">
+        <li>⏱️ <b>Таймер:</b> на каждый вопрос 25 секунд. Не успели — пациент теряет силы.</li>
+        <li>❤️ <b>Три жизни:</b> за каждый неверный ответ теряете одну жизнь и 20% состояния пациента.</li>
+        <li>🔥 <b>Комбо:</b> серия верных ответов умножает очки до ×3.</li>
+        <li>🩺 <b>Финал:</b> от звания «Стажёр» до «Кардиолог-профи». Три потери — госпитализация, игра окончена.</li>
+        <li>🔀 Вопросы и варианты перемешиваются в каждой новой игре.</li>
+      </ul>
+      <button class="bigbtn" onclick="startGame()">▶ Начать игру</button>
+    </div>
+  </div>
+
+  <!-- ЭКРАН ВОПРОСА -->
+  <div class="screen" id="scrGame">
+    <div class="card">
+      <div class="qhead">
+        <div class="qbadge" id="qbadge">Вопрос 1</div>
+        <div class="combo" id="uiCombo"></div>
+      </div>
+      <div class="timerwrap"><div class="timerfill" id="timerfill"></div></div>
+      <div class="qtext" id="qtext"></div>
+      <div class="answers" id="answers"></div>
+      <div class="feedback" id="feedback"></div>
+      <div class="center nextbtn"><button class="bigbtn blue" id="nextBtn" onclick="nextQuestion()" style="display:none;">Дальше →</button></div>
+      <div class="progress-dots" id="dots"></div>
+    </div>
+  </div>
+
+  <!-- ЭКРАН ФИНАЛА -->
+  <div class="screen" id="scrEnd">
+    <div class="card">
+      <div class="final-emoji" id="endEmoji">🏆</div>
+      <div class="rank" id="endRank"></div>
+      <div class="score-big" id="endScore"></div>
+      <div class="finalstats">
+        <div class="fst"><div class="v" id="stCorrect">0</div><div class="l">верных</div></div>
+        <div class="fst"><div class="v" id="stWrong">0</div><div class="l">ошибок</div></div>
+        <div class="fst"><div class="v" id="stAcc">0%</div><div class="l">точность</div></div>
+        <div class="fst"><div class="v" id="stBest">0</div><div class="l">лучшее комбо</div></div>
+      </div>
+      <p class="sub center" id="endMsg"></p>
+      <div class="center">
+        <button class="bigbtn" onclick="startGame()">⟲ Играть снова</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ==================== ВОПРОСЫ ====================
+const QUESTIONS = [
+ {q:"Что такое сердечно-сосудистые заболевания (ССЗ)?", a:["Заболевания только сердца","Заболевания только сосудов","Заболевания сердца и сосудов","Заболевания органов, кроме сердца и сосудов"], c:2, e:"ССЗ — это общая группа болезней сердца и кровеносных сосудов: ишемическая болезнь, гипертония, инсульт, атеросклероз и другие."},
+ {q:"Что такое аневризма сосуда?", a:["Сужение артерии","Локальное расширение стенки сосуда","Сгусток крови в вене","Воспаление стенки артерии"], c:1, e:"Аневризма — мешковидное или веретенообразное выпячивание стенки сосуда из-за её истончения и потери прочности."},
+ {q:"Чем наиболее опасна аневризма аорты или сосуда головного мозга?", a:["Тем, что всегда гарантирует смерть","Косметическим дефектом","Разрывом и тяжёлым кровотечением","Ухудшением кровотока"], c:2, e:"Главная опасность — разрыв аневризмы с массивным кровотечением: в мозге это геморрагический инсульт, в аорте — стремительная кровопотеря."},
+ {q:"Что такое инфаркт миокарда?", a:["Нарушение ритма работы сердца","Расширение вены на ноге","Кровоизлияние в головной мозг","Омертвение участка сердечной мышцы из-за нарушения кровоснабжения"], c:3, e:"Инфаркт — некроз участка миокарда: коронарная артерия перекрывается тромбом, и мышца без кровоснабжения погибает."},
+ {q:"Какой симптом наиболее типичен для острого инфаркта миокарда?", a:["Боль в области головы","Чувство пустоты в области груди","Сильная жажда","Давящая или жгучая боль за грудиной более 20 минут"], c:3, e:"Классика — давящая, жгучая, сжимающая боль за грудиной дольше 20 минут, часто с отдачей в левую руку, челюсть, с холодным потом и страхом."},
+ {q:"Что такое инсульт?", a:["Воспаление артерии","Инфаркт сердечной мышцы","Острое нарушение мозгового кровообращения с повреждением мозга","Аневризма артерии или вены мозга"], c:2, e:"Инсульт — острое нарушение мозгового кровообращения: либо закупорка сосуда (ишемический), либо кровоизлияние (геморрагический)."},
+ {q:"Какие признаки помогают заподозрить инсульт?", a:["Асимметрия лица, слабость руки, нарушение речи","Боль в груди и изжога","Кашель и температура","Отёк ноги и нарушение зрения"], c:0, e:"Правило «УЗП»: Улыбка асимметрична, З slowed речь нарушена, Поднятые руки — одна слабеет. Любой признак — немедленно вызывать скорую."},
+ {q:"Что нужно сделать при подозрении на инфаркт или инсульт?", a:["Подождать несколько часов","Приложить горячую грелку","Дать обильную еду","Немедленно вызвать скорую помощь"], c:3, e:"При инфаркте и инсульте счёт идёт на минуты: только скорая может обеспечить экстренную госпитализацию и тромболизис/тромбэктомию."},
+ {q:"Какой метод в первую очередь помогает диагностировать инфаркт миокарда?", a:["ЭКГ (электрокардиография)","Рентген грудной клетки","УЗИ брюшной полости","Анализ мочи"], c:0, e:"ЭКГ — первый и обязательный метод: подъём или депрессия сегмента ST видны уже в первые минуты. Дополняет анализ на тропонин."},
+ {q:"Что показывает ЭКГ?", a:["Функцию лёгких","Электрическую активность сердца","Работу мозга","Уровень сахара в крови"], c:1, e:"ЭКГ регистрирует электрическую активность сердца: ритм, частоту сокращений, проводимость и признаки ишемии или инфаркта."},
+ {q:"Для чего используют ЭхоКГ (УЗИ сердца)?", a:["Для оценки только состояния аорты","Для оценки состояния головного мозга","Для оценки структуры сердца и насосной функции","Для оценки ритма сердца"], c:2, e:"ЭхоКГ показывает клапаны, камеры, толщину стенок и фракцию выброса — то есть насосную функцию сердца. Ритм точнее оценивает ЭКГ."},
+ {q:"У кого серьёзные ССЗ, такие как инфаркт и инсульт, случаются в среднем на 7–10 лет позже?", a:["У мужчин","У женщин"], c:1, e:"До менопаузы женщин защищают эстрогены, поэтому инфаркт и инсульт у них в среднем случаются на 7–10 лет позже, чем у мужчин."},
+ {q:"Что такое коронарография?", a:["Рентгеноконтрастное исследование коронарных артерий","Исследование вен ног","УЗИ сосудов головного мозга","МРТ мозга"], c:0, e:"Коронарография — «золотой стандарт» визуализации коронарных артерий: контраст вводится в сосуды сердца под рентген-контролем."},
+ {q:"Какой метод помогает отличить ишемический инсульт от геморрагического?", a:["ЭКГ","ЭхоКГ","КТ или МРТ головного мозга","Липидограмма"], c:2, e:"Только КТ или МРТ головного мозга позволяют увидеть: закупорка сосуда или кровоизлияние. От этого зависит, давать ли тромболитик."},
+ {q:"Какой фактор риска наиболее важен для развития ССЗ?", a:["Молодой возраст","Вегетарианство","Повышенное артериальное давление","Нормальная масса тела"], c:2, e:"Артериальная гипертензия — фактор №1 по вкладу в смертность от ССЗ: она ускоряет атеросклероз и ведёт к инфаркту и инсульту."},
+ {q:"Как курение влияет на риск ССЗ?", a:["Вредит только лёгким","Повышает риск инфаркта и инсульта","Не влияет на сосуды","Защищает от атеросклероза"], c:1, e:"Курение повреждает эндотелий сосудов, повышает свёртываемость крови и риск тромбозов — инфаркта и инсульта."},
+ {q:"Что относится к профилактике ССЗ?", a:["Здоровое питание, физическая активность, отказ от курения, контроль давления","Только операции","Только приём лекарств без изменения образа жизни","Профилактика не нужна"], c:0, e:"80% инфарктов и инсультов можно предотвратить: здоровое питание, движение, отказ от курения, контроль давления и холестерина."},
+ {q:"Какое артериальное давление обычно считается повышенным?", a:["140/90 мм рт. ст. и выше","120/70 мм рт. ст.","130/65 мм рт. ст.","90/50 мм рт. ст."], c:0, e:"Гипертонией считают АД 140/90 мм рт. ст. и выше при повторных измерениях. Целевые значения для большинства — ниже 130/80."},
+ {q:"Что такое атеросклероз?", a:["Расширение сосуда","Сгусток в вене","Отложение холестериновых бляшек в стенке артерии","Сужение артерий на холоде"], c:2, e:"Атеросклероз — хроническое отложение холестерина (ЛПНП) в стенке артерии с формированием бляшек, сужающих просвет."},
+ {q:"Чем опасен атеросклероз коронарных артерий?", a:["Проходит сам без лечения","Может привести к ишемии и инфаркту миокарда","Не опасен, а улучшает кровоснабжение сердца","Приводит к варикозу вен ног"], c:1, e:"Бляшки сужают коронарные артерии: сначала стенокардия (ишемия), при разрыве бляшки и тромбозе — инфаркт миокарда."},
+ {q:"Что можно сделать при подозрении на инфаркт, если нет аллергии и скорая разрешила?", a:["Дать жирную пищу","Сделать массаж ноги","Дать алкоголь","Разжевать аспирин"], c:3, e:"Разжёванная (не проглоченная целиком) таблетка аспирина снижает свёртываемость и ограничивает рост тромба — но только по согласованию со скорой."},
+ {q:"Почему при инсульте важна ранняя помощь?", a:["Можно ждать 24 часа без последствий","Чем раньше начато лечение, тем меньше повреждение мозга","Помощь нужна только на следующий день","Инсульт не требует лечения"], c:1, e:"Тромболизис эффективен в первые часы (обычно до 4,5 ч): каждый минута промедления гибнут миллионы нейронов — «время = мозг»."},
+ {q:"Какой признак может указывать на разрыв аневризмы аорты?", a:["Лёгкий зуд кожи и першение в горле","Диарея больше трёх дней","Боль в глазу","Внезапная очень сильная боль и падение давления"], c:3, e:"Разрыв аневризмы аорты — внезапная нестерпимая боль (грудь, спина, живот) и резкое падение давления. Это критическое состояние, нужна немедленная скорая."},
+ {q:"Что НЕ относится к диагностике сердечно-сосудистых заболеваний?", a:["ЭКГ","Измерение артериального давления","Липидограмма","Анализ волос"], c:3, e:"Основные методы: ЭКГ, ЭхоКГ, измерение АД, липидограмма (холестерин), коронарография. Волосы на сердце не «намекнут»."},
+ {q:"Что важно для профилактики повторного инфаркта или инсульта?", a:["Самостоятельно отменить лекарства при улучшении","Не посещать врача","Регулярно принимать назначенные препараты и контролировать давление, холестерин, сахар","Только больше лежать"], c:2, e:"Вторичная профилактика: не отменять препараты самому, контролировать АД, холестерин и сахар, наблюдаться у врача."},
+ {q:"Как называют группу состояний: инфаркт миокарда с подъёмом и без подъёма ST и нестабильная стенокардия?", a:["Внезапная сердечная смерть","Острая инсультовая реакция","Острый коронарный синдром","Атеросклероз корня аорты"], c:2, e:"Острый коронарный синдром (ОКС) — объединяющий термин: диагноз на догоспитальном этапе, пока ЭКГ не уточнит тип."},
+ {q:"Как называют поражение миокарда, вызванное нарушением кровотока по коронарным артериям?", a:["Ишемическая болезнь сердца","Атеросклероз","Стабильная стенокардия","Нестабильная стенокардия"], c:0, e:"Ишемическая болезнь сердца (ИБС) — общий диагноз: несоответствие между потребностью миокарда в кислороде и доставкой по коронарным артериям."},
+ {q:"Нарушения ритма сердца — это любые отклонения от нормального синусового ритма (по определению ВОЗ). Правда или ложь?", a:["Правда","Ложь"], c:0, e:"По определению рабочей группы экспертов ВОЗ, аритмии — это любые нарушения ритма или проводимости, отличающиеся от нормального синусового ритма."},
+ {q:"Что НЕ является заболеванием сердечно-сосудистой системы?", a:["Кардиомиопатия","Миокардит","Пороки сердца","Пневмония"], c:3, e:"Пневмония — воспаление лёгких, болезнь дыхательной системы. Кардиомиопатия, миокардит и пороки сердца — кардиологические заболевания."},
+ {q:"Как делят сердечную недостаточность по скорости развития?", a:["Дистальная и проксимальная","Генуинная и превентивная","Систолическая и диастолическая","Острая и хроническая"], c:3, e:"По скорости развития сердечная недостаточность делится на острую (часы, минуты — отёк лёгких, кардиогенный шок) и хроническую (месяцы, годы)."}
+];
+
+// ==================== СОСТОЯНИЕ ИГРЫ ====================
+const LIVES_MAX = 3;
+let order = [], idx = 0, lives = LIVES_MAX, hp = 100, score = 0, combo = 0, bestCombo = 0;
+let correctCnt = 0, wrongCnt = 0, timeLeft = 0, timerId = null, answered = false;
+let soundOn = true, ac = null, dots = [];
+
+const $ = id => document.getElementById(id);
+const shuffle = arr => { const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; };
+
+// ==================== ЗВУК ====================
+function ensureAC(){ if(!ac){ try{ ac = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(ac && ac.state==='suspended') ac.resume(); }
+function tone(freq, dur, type='sine', vol=.25, delay=0){
+  if(!soundOn) return; ensureAC(); if(!ac) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, ac.currentTime+delay);
+  g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+delay+dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(ac.currentTime+delay); o.stop(ac.currentTime+delay+dur+.05);
+}
+function sfxCorrect(){ tone(523,.12,'sine',.3); tone(659,.12,'sine',.3,.1); tone(784,.2,'sine',.3,.2); }
+function sfxWrong(){ tone(180,.35,'sawtooth',.3); tone(120,.4,'sawtooth',.25,.15); }
+function sfxTick(){ tone(880,.05,'square',.08); }
+function sfxHeart(){ tone(60,.1,'sine',.5); tone(50,.12,'sine',.4,.14); }
+function sfxVictory(){ [523,659,784,1047,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.3,i*.13)); }
+function sfxGameOver(){ [440,392,330,262].forEach((f,i)=>tone(f,.35,'sawtooth',.2,i*.25)); }
+function toggleSound(){
+  soundOn = !soundOn;
+  $('sndBtn').textContent = soundOn ? '🔊' : '🔇';
+  if(!soundOn && ac) ac.suspend();
+  if(soundOn) ac && ac.resume();
+}
+
+// ==================== ИГРА ====================
+function startGame(){
+  order = shuffle([...QUESTIONS.keys()]);
+  idx = 0; lives = LIVES_MAX; hp = 100; score = 0; combo = 0; bestCombo = 0; correctCnt = 0; wrongCnt = 0;
+  dots = QUESTIONS.map(()=>0);
+  $('topbar').style.display = 'flex';
+  $('hpwrap').style.display = 'block';
+  showScreen('scrGame');
+  updateHUD();
+  renderDots();
+  playHeartLoop();
+  loadQuestion();
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+function updateHUD(){
+  $('uiScore').textContent = score;
+  $('uiQnum').textContent = Math.min(idx+1, QUESTIONS.length) + '/' + QUESTIONS.length;
+  $('uiLives').textContent = '❤'.repeat(lives) + '🖤'.repeat(LIVES_MAX-lives);
+  $('uiCombo').textContent = combo>1 ? '🔥 комбо ×' + Math.min(combo,3) : '';
+  const fill = $('hpfill');
+  fill.style.width = hp + '%';
+  fill.className = 'hpfill' + (hp<=30 ? ' crit' : hp<=60 ? ' warn' : '');
+  $('uiHpTxt').textContent = hp + '%' + (hp<=30 ? ' — критично!' : hp<=60 ? ' — стабилизируйте' : '');
+}
+
+function loadQuestion(){
+  answered = false;
+  const qi = order[idx], q = QUESTIONS[qi];
+  $('qbadge').textContent = 'Вопрос ' + (idx+1) + ' из ' + QUESTIONS.length;
+  $('qtext').textContent = q.q;
+  $('feedback').className = 'feedback'; $('feedback').innerHTML='';
+  $('nextBtn').style.display='none';
+  renderDots();
+  const perm = shuffle([...q.a.keys()]);
+  const box = $('answers'); box.innerHTML='';
+  perm.forEach((ai, pos)=>{
+    const b = document.createElement('button');
+    b.className='ans';
+    b.innerHTML = '<span class="key">'+'АБВГ'[pos]+'</span><span>'+q.a[ai]+'</span>';
+    b.onclick = ()=>pickAnswer(b, ai);
+    box.appendChild(b);
+  });
+  timeLeft = 25;
+  updateTimerUI();
+  clearInterval(timerId);
+  timerId = setInterval(()=>{
+    if(answered) return;
+    timeLeft--; updateTimerUI();
+    if(timeLeft<=5 && timeLeft>0) sfxTick();
+    if(timeLeft<=0){ clearInterval(timerId); timeoutAnswer(); }
+  },1000);
+}
+function updateTimerUI(){
+  const f = $('timerfill');
+  f.style.width = Math.max(0, timeLeft/25*100)+'%';
+  f.className = 'timerfill' + (timeLeft<=7 ? ' low' : '');
+}
+
+function pickAnswer(btn, ai){
+  if(answered) return;
+  answered = true;
+  clearInterval(timerId);
+  const q = QUESTIONS[order[idx]];
+  const btns = document.querySelectorAll('#answers .ans');
+  btns.forEach(b=>b.disabled=true);
+  if(ai === q.c){
+    btn.classList.add('correct');
+    correctCnt++; dots[idx]=1;
+    combo++; if(combo>bestCombo) bestCombo=combo;
+    const mult = Math.min(combo,3);
+    const pts = 100*mult + timeLeft*2;
+    score += pts;
+    hp = Math.min(100, hp+4);
+    sfxCorrect();
+    showFeedback(true, 'Верно! '+(mult>1?'Комбо ×'+mult+'! ':'')+'+'+pts+' очков. Пациент стабилизируется.', q.e);
+  } else {
+    btn.classList.add('wrong');
+    btns.forEach(b=>{ if(QUESTIONS[order[idx]].a.indexOf(q.a[q.c])!==-1){} });
+    // подсветим правильный
+    btns.forEach((b,pos)=>{ /* пометим через сравнение с накопленным */
+    });
+    markCorrect(btns, q);
+    wrongCnt++; dots[idx]=2;
+    combo = 0;
+    lives--; hp -= 20;
+    sfxWrong();
+    document.body.classList.add('quake');
+    setTimeout(()=>document.body.classList.remove('quake'), 500);
+    showFeedback(false, 'Ошибка! Пациенту хуже: −20% состояния, −1 жизнь.', q.e);
+  }
+  updateHUD();
+  $('nextBtn').style.display='inline-block';
+  $('nextBtn').textContent = (lives<=0 || idx===QUESTIONS.length-1) ? 'Итоги →' : 'Дальше →';
+}
+
+function markCorrect(btns, q){
+  btns.forEach(b=>{
+    const txt = b.querySelector('span:last-child').textContent;
+    if(txt === q.a[q.c]) b.classList.add('correct');
+    else if(!b.classList.contains('wrong')) b.classList.add('dim');
+  });
+}
+
+function timeoutAnswer(){
+  answered = true;
+  const q = QUESTIONS[order[idx]];
+  const btns = document.querySelectorAll('#answers .ans');
+  btns.forEach(b=>b.disabled=true);
+  markCorrect(btns, q);
+  wrongCnt++; dots[idx]=2; combo=0; lives--; hp-=20;
+  sfxWrong();
+  document.body.classList.add('quake');
+  setTimeout(()=>document.body.classList.remove('quake'),500);
+  showFeedback(false, '⏱️ Время вышло! Пациенту хуже: −20% состояния, −1 жизнь.', q.e);
+  updateHUD();
+  $('nextBtn').style.display='inline-block';
+  $('nextBtn').textContent = (lives<=0 || idx===QUESTIONS.length-1) ? 'Итоги →' : 'Дальше →';
+}
+
+function showFeedback(good, head, expl){
+  const f = $('feedback');
+  f.className = 'feedback show ' + (good?'good':'bad');
+  f.innerHTML = '<b>'+head+'</b><br><br>💡 '+expl;
+}
+
+function nextQuestion(){
+  if(lives<=0){ endGame(false); return; }
+  if(idx>=QUESTIONS.length-1){ endGame(true); return; }
+  idx++;
+  loadQuestion();
+}
+
+function renderDots(){
+  const d = $('dots'); d.innerHTML='';
+  QUESTIONS.forEach((_,i)=>{
+    const s = document.createElement('span');
+    s.className = 'dot' + (dots[i]===1?' ok':dots[i]===2?' fail':'') + (i===idx && !answered ? ' cur':'');
+    d.appendChild(s);
+  });
+}
+
+let heartLoopId = null;
+function playHeartLoop(){
+  clearInterval(heartLoopId);
+  heartLoopId = setInterval(()=>{ if(soundOn && lives>0) sfxHeart(); }, 900);
+}
+
+function endGame(win){
+  clearInterval(timerId); clearInterval(heartLoopId);
+  showScreen('scrEnd');
+  const total = QUESTIONS.length;
+  const acc = Math.round(correctCnt/total*100);
+  $('stCorrect').textContent = correctCnt;
+  $('stWrong').textContent = wrongCnt;
+  $('stAcc').textContent = acc+'%';
+  $('stBest').textContent = '×'+bestCombo;
+  $('endScore').textContent = score.toLocaleString('ru-RU');
+
+  let rank, emoji, msg;
+  if(win && acc>=90){ rank='Кардиолог-профи 🥇'; emoji='🏆'; msg='Блестящий результат! Пациент спасён, реанимация закрыта. Берегите своё сердце — и вы знаете, как беречь чужие.'; }
+  else if(win && acc>=70){ rank='Опытный врач 🩺'; emoji='🎖️'; msg='Хорошая работа! Большинство пациентов в безопасности. Повторите сложные темы — и будете непобедимы.'; }
+  else if(win || acc>=50){ rank='Терапевт-ординатор 📋'; emoji='📚'; msg='Победа есть, но с потерями. Разбор ошибок — лучший способ выучить кардиологию.'; }
+  else { rank='Стажёр-интерн 🔖'; emoji='🫠'; msg='Пациент попал в реанимацию... Но каждый великий кардиолог когда-то путал ЭКГ и ЭхоКГ. Ещё разок?'; }
+  $('endRank').textContent = rank;
+  $('endEmoji').textContent = emoji;
+  $('endMsg').textContent = msg;
+
+  if(win && acc>=70){ sfxVictory(); fireworks(); }
+  else if(!win || acc<50){ sfxGameOver(); rain(); }
+}
+
+function fireworks(){
+  const colors=['#ffd166','#ff4d6d','#38bdf8','#2ecc71','#a78bfa','#f97316'];
+  for(let i=0;i<70;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='firework';
+      el.style.left=(10+Math.random()*80)+'vw';
+      el.style.top=(10+Math.random()*60)+'vh';
+      el.style.background=colors[i%colors.length];
+      el.style.setProperty('--dx',(Math.random()*300-150)+'px');
+      el.style.setProperty('--dy',(Math.random()*300-150)+'px');
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),1500);
+    }, i*90);
+  }
+}
+function rain(){
+  for(let i=0;i<50;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='firework';
+      el.style.left=Math.random()*100+'vw';
+      el.style.top='-2vh';
+      el.style.width='2px'; el.style.height='18px';
+      el.style.background='rgba(140,180,255,.8)';
+      el.style.setProperty('--dx','0px');
+      el.style.setProperty('--dy','110vh');
+      el.style.animationDuration='1.2s';
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),1300);
+    }, i*60);
+  }
+}
+</script>
+</body>
+</html>
